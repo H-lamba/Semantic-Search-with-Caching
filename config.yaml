@@ -1,0 +1,48 @@
+# ============================================================
+# Configuration for Semantic Search Pipeline
+# ============================================================
+# All tunable parameters are centralized here.
+# This avoids hardcoding values and makes experimentation easy.
+
+# Embedding Model
+embedding:
+  model_name: "all-MiniLM-L6-v2"
+  dimension: 384
+  batch_size: 64
+
+# Vector Database (FAISS)
+vector_store:
+  index_type: "IndexFlatIP"   # Exact inner product search
+  top_k: 5                    # Default number of results
+
+# Fuzzy Clustering (GMM)
+clustering:
+  min_k: 10
+  max_k: 30
+  step: 2
+  pca_components: 50
+  covariance_type: "diag"
+  random_state: 42
+  n_init: 5
+  max_iter: 300
+
+# Semantic Cache
+cache:
+  similarity_threshold: 0.85   # Cosine sim threshold for cache hit
+  max_entries: 10000            # LRU eviction after this many entries
+  cluster_search_depth: 3      # Number of top clusters to search
+
+# API Server
+server:
+  host: "0.0.0.0"
+  port: 8000
+
+# Data Paths
+paths:
+  raw_data: "data/raw/20_newsgroups"
+  processed_dir: "data/processed"
+  models_dir: "models"
+
+# Cleaning Pipeline
+cleaning:
+  min_body_length: 50          # Drop docs shorter than this after cleaning

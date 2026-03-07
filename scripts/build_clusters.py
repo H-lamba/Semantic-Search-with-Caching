@@ -137,7 +137,6 @@ def build_clusters():
         for i in range(len(vector_store.metadata)):
             if i < len(dominant_clusters):
                 vector_store.metadata[i]["dominant_cluster"] = int(dominant_clusters[i])
-                vector_store.metadata[i]["cluster_probs"] = cluster_probs[i].tolist()
         vector_store.save()
         print("Updated vector store metadata with cluster info.")
 

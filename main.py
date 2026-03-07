@@ -1,13 +1,7 @@
 """
-Trademarkia AI&ML Engineer Task
-================================
-Semantic Search & Fuzzy Clustering Pipeline over the 20 Newsgroups Dataset.
-
-This is the main entry point for the FastAPI application.
-
-Task 88: Services are mounted using FastAPI's lifespan events for proper
-state management. The embedding model, vector store, clustering model, and
-semantic cache are all initialized once at startup and shared across requests.
+Semantic Search & Fuzzy Clustering API
+=======================================
+Main entry point for the FastAPI application.
 
 Run with: uvicorn main:app --host 0.0.0.0 --port 8000
 """
@@ -22,62 +16,67 @@ from fastapi.middleware.cors import CORSMiddleware
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, PROJECT_ROOT)
 
+from app.core.config import config
+from app.core.logger import setup_logger
 from app.api.routes import router, set_services
 from app.services.embedding_service import EmbeddingService
 from app.services.vector_store import VectorStore
 from app.services.clustering_service import FuzzyClusterService
 from app.services.semantic_cache import SemanticCache
 
+logger = setup_logger("semantic_search.main")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Task 88: Mount services using FastAPI lifespan events.
+    """Mount services using FastAPI lifespan events.
 
-    Task 90: Optimized startup — loads pre-built indexes from disk
-    instead of rebuilding. Boots in seconds after initial build.
+    Optimized startup: loads pre-built indexes from disk.
     """
-    print("=" * 50)
-    print("Starting Semantic Search API...")
-    print("=" * 50)
+    logger.info("=" * 50)
+    logger.info("Starting Semantic Search API...")
+    logger.info("=" * 50)
 
-    # Initialize services
-    embedding_service = EmbeddingService()
-    vector_store = VectorStore()
+    # Initialize services using config.yaml parameters
+    embedding_service = EmbeddingService(
+        model_name=config["embedding"]["model_name"]
+    )
+    vector_store = VectorStore(
+        dimension=config["embedding"]["dimension"]
+    )
     cluster_service = FuzzyClusterService()
     semantic_cache = SemanticCache(
-        similarity_threshold=0.85,
+        similarity_threshold=config["cache"]["similarity_threshold"],
+        max_entries=config["cache"]["max_entries"],
+        cluster_search_depth=config["cache"]["cluster_search_depth"],
         embedding_service=embedding_service,
         cluster_service=cluster_service,
     )
 
-    # Load pre-built models from disk (Task 39, 55)
+    # Load pre-built models from disk
     vector_loaded = vector_store.load()
     if not vector_loaded:
-        print("WARNING: No vector store found. Run 'python scripts/build_vector_db.py' first.")
+        logger.warning("No vector store found. Run 'python scripts/build_vector_db.py' first.")
 
     try:
         cluster_service.load()
     except FileNotFoundError:
-        print("WARNING: No clustering model found. Run 'python scripts/build_clusters.py' first.")
+        logger.warning("No clustering model found. Run 'python scripts/build_clusters.py' first.")
 
-    # Pre-load embedding model (so first query isn't slow)
+    # Pre-load embedding model
     _ = embedding_service.model
 
     # Inject services into routes
     set_services(embedding_service, vector_store, semantic_cache, cluster_service)
 
-    print("\nAPI ready! All services loaded.")
-    print("=" * 50)
+    logger.info("API ready! All services loaded.")
+    logger.info("=" * 50)
 
-    yield  # App is running
+    yield
 
-    # Cleanup on shutdown
-    print("Shutting down...")
+    logger.info("Shutting down...")
 
 
-# ============================================================
-# Task 76: Initialize FastAPI application
-# ============================================================
 app = FastAPI(
     title="Semantic Search & Clustering API",
     description=(
@@ -88,7 +87,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -97,18 +95,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Task 91: Global exception handler
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
+    logger.error(f"Unhandled exception: {exc}")
     return {"error": str(exc), "status": "error"}
 
-# Mount routes
+
 app.include_router(router)
 
 
 @app.get("/")
 async def root():
-    """Health check endpoint."""
     return {
         "status": "ok",
         "message": "Semantic Search & Clustering API is running.",
@@ -118,4 +116,9 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(
+        "main:app",
+        host=config["server"]["host"],
+        port=config["server"]["port"],
+        reload=True,
+    )

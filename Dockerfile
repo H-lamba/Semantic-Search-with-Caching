@@ -11,7 +11,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
+# Download NLTK data (needed by clustering service at import time)
+RUN python -c "import nltk; nltk.download('punkt_tab'); nltk.download('stopwords'); nltk.download('wordnet'); nltk.download('omw-1.4')"
+
+# Copy application code and pre-built models
 COPY . .
 
 # Expose port 8000 (Task 95)
