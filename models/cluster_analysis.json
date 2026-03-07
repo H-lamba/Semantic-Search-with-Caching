@@ -1,0 +1,750 @@
+{
+  "n_documents": 19125,
+  "n_clusters": 30,
+  "high_confidence_count": 16979,
+  "high_confidence_pct": "88.8%",
+  "boundary_count": 435,
+  "boundary_pct": "2.3%",
+  "uncertain_count": 5,
+  "uncertain_pct": "0.0%",
+  "cluster_category_mapping": {
+    "0": {
+      "total_docs": 745,
+      "top_categories": [
+        [
+          "sci.electronics",
+          344
+        ],
+        [
+          "comp.sys.ibm.pc.hardware",
+          90
+        ],
+        [
+          "misc.forsale",
+          84
+        ],
+        [
+          "comp.sys.mac.hardware",
+          71
+        ],
+        [
+          "sci.crypt",
+          58
+        ]
+      ]
+    },
+    "1": {
+      "total_docs": 629,
+      "top_categories": [
+        [
+          "comp.os.ms-windows.misc",
+          399
+        ],
+        [
+          "comp.windows.x",
+          80
+        ],
+        [
+          "comp.graphics",
+          47
+        ],
+        [
+          "comp.sys.ibm.pc.hardware",
+          36
+        ],
+        [
+          "misc.forsale",
+          17
+        ]
+      ]
+    },
+    "2": {
+      "total_docs": 723,
+      "top_categories": [
+        [
+          "sci.electronics",
+          215
+        ],
+        [
+          "rec.autos",
+          110
+        ],
+        [
+          "rec.motorcycles",
+          85
+        ],
+        [
+          "sci.med",
+          68
+        ],
+        [
+          "sci.space",
+          68
+        ]
+      ]
+    },
+    "3": {
+      "total_docs": 668,
+      "top_categories": [
+        [
+          "rec.motorcycles",
+          541
+        ],
+        [
+          "rec.autos",
+          92
+        ],
+        [
+          "misc.forsale",
+          10
+        ],
+        [
+          "sci.space",
+          5
+        ],
+        [
+          "sci.electronics",
+          4
+        ]
+      ]
+    },
+    "4": {
+      "total_docs": 601,
+      "top_categories": [
+        [
+          "talk.politics.misc",
+          238
+        ],
+        [
+          "sci.space",
+          89
+        ],
+        [
+          "talk.politics.guns",
+          48
+        ],
+        [
+          "sci.crypt",
+          46
+        ],
+        [
+          "talk.politics.mideast",
+          29
+        ]
+      ]
+    },
+    "5": {
+      "total_docs": 745,
+      "top_categories": [
+        [
+          "sci.med",
+          690
+        ],
+        [
+          "talk.politics.misc",
+          11
+        ],
+        [
+          "rec.motorcycles",
+          7
+        ],
+        [
+          "alt.atheism",
+          6
+        ],
+        [
+          "sci.space",
+          6
+        ]
+      ]
+    },
+    "6": {
+      "total_docs": 1037,
+      "top_categories": [
+        [
+          "soc.religion.christian",
+          636
+        ],
+        [
+          "talk.religion.misc",
+          231
+        ],
+        [
+          "alt.atheism",
+          131
+        ],
+        [
+          "talk.politics.guns",
+          23
+        ],
+        [
+          "talk.politics.misc",
+          9
+        ]
+      ]
+    },
+    "7": {
+      "total_docs": 844,
+      "top_categories": [
+        [
+          "comp.graphics",
+          96
+        ],
+        [
+          "sci.crypt",
+          74
+        ],
+        [
+          "comp.windows.x",
+          71
+        ],
+        [
+          "sci.electronics",
+          60
+        ],
+        [
+          "misc.forsale",
+          56
+        ]
+      ]
+    },
+    "8": {
+      "total_docs": 1022,
+      "top_categories": [
+        [
+          "comp.graphics",
+          118
+        ],
+        [
+          "sci.electronics",
+          110
+        ],
+        [
+          "comp.os.ms-windows.misc",
+          102
+        ],
+        [
+          "sci.space",
+          84
+        ],
+        [
+          "comp.sys.mac.hardware",
+          80
+        ]
+      ]
+    },
+    "9": {
+      "total_docs": 886,
+      "top_categories": [
+        [
+          "alt.atheism",
+          238
+        ],
+        [
+          "talk.politics.misc",
+          152
+        ],
+        [
+          "talk.politics.mideast",
+          118
+        ],
+        [
+          "talk.politics.guns",
+          98
+        ],
+        [
+          "talk.religion.misc",
+          79
+        ]
+      ]
+    },
+    "10": {
+      "total_docs": 284,
+      "top_categories": [
+        [
+          "rec.sport.hockey",
+          207
+        ],
+        [
+          "rec.sport.baseball",
+          73
+        ],
+        [
+          "misc.forsale",
+          2
+        ],
+        [
+          "comp.graphics",
+          1
+        ],
+        [
+          "sci.space",
+          1
+        ]
+      ]
+    },
+    "11": {
+      "total_docs": 738,
+      "top_categories": [
+        [
+          "comp.sys.ibm.pc.hardware",
+          275
+        ],
+        [
+          "comp.sys.mac.hardware",
+          160
+        ],
+        [
+          "comp.graphics",
+          101
+        ],
+        [
+          "comp.os.ms-windows.misc",
+          88
+        ],
+        [
+          "sci.electronics",
+          50
+        ]
+      ]
+    },
+    "12": {
+      "total_docs": 602,
+      "top_categories": [
+        [
+          "misc.forsale",
+          460
+        ],
+        [
+          "sci.electronics",
+          37
+        ],
+        [
+          "comp.sys.mac.hardware",
+          30
+        ],
+        [
+          "comp.sys.ibm.pc.hardware",
+          13
+        ],
+        [
+          "comp.os.ms-windows.misc",
+          12
+        ]
+      ]
+    },
+    "13": {
+      "total_docs": 422,
+      "top_categories": [
+        [
+          "talk.politics.guns",
+          331
+        ],
+        [
+          "talk.politics.misc",
+          22
+        ],
+        [
+          "sci.crypt",
+          20
+        ],
+        [
+          "rec.autos",
+          19
+        ],
+        [
+          "talk.religion.misc",
+          13
+        ]
+      ]
+    },
+    "14": {
+      "total_docs": 591,
+      "top_categories": [
+        [
+          "rec.sport.hockey",
+          575
+        ],
+        [
+          "rec.sport.baseball",
+          16
+        ]
+      ]
+    },
+    "15": {
+      "total_docs": 691,
+      "top_categories": [
+        [
+          "rec.autos",
+          552
+        ],
+        [
+          "rec.motorcycles",
+          59
+        ],
+        [
+          "misc.forsale",
+          53
+        ],
+        [
+          "sci.electronics",
+          9
+        ],
+        [
+          "sci.space",
+          5
+        ]
+      ]
+    },
+    "16": {
+      "total_docs": 428,
+      "top_categories": [
+        [
+          "comp.os.ms-windows.misc",
+          145
+        ],
+        [
+          "comp.sys.mac.hardware",
+          115
+        ],
+        [
+          "comp.sys.ibm.pc.hardware",
+          97
+        ],
+        [
+          "comp.windows.x",
+          19
+        ],
+        [
+          "comp.graphics",
+          16
+        ]
+      ]
+    },
+    "17": {
+      "total_docs": 673,
+      "top_categories": [
+        [
+          "comp.graphics",
+          475
+        ],
+        [
+          "comp.windows.x",
+          98
+        ],
+        [
+          "comp.os.ms-windows.misc",
+          52
+        ],
+        [
+          "comp.sys.mac.hardware",
+          15
+        ],
+        [
+          "sci.electronics",
+          10
+        ]
+      ]
+    },
+    "18": {
+      "total_docs": 406,
+      "top_categories": [
+        [
+          "talk.politics.mideast",
+          390
+        ],
+        [
+          "talk.politics.guns",
+          5
+        ],
+        [
+          "talk.religion.misc",
+          4
+        ],
+        [
+          "alt.atheism",
+          3
+        ],
+        [
+          "talk.politics.misc",
+          3
+        ]
+      ]
+    },
+    "19": {
+      "total_docs": 554,
+      "top_categories": [
+        [
+          "talk.politics.guns",
+          288
+        ],
+        [
+          "talk.politics.misc",
+          151
+        ],
+        [
+          "talk.religion.misc",
+          55
+        ],
+        [
+          "talk.politics.mideast",
+          17
+        ],
+        [
+          "alt.atheism",
+          14
+        ]
+      ]
+    },
+    "20": {
+      "total_docs": 559,
+      "top_categories": [
+        [
+          "comp.windows.x",
+          523
+        ],
+        [
+          "comp.graphics",
+          16
+        ],
+        [
+          "comp.os.ms-windows.misc",
+          13
+        ],
+        [
+          "sci.electronics",
+          2
+        ],
+        [
+          "comp.sys.ibm.pc.hardware",
+          1
+        ]
+      ]
+    },
+    "21": {
+      "total_docs": 595,
+      "top_categories": [
+        [
+          "sci.crypt",
+          559
+        ],
+        [
+          "sci.electronics",
+          13
+        ],
+        [
+          "talk.politics.guns",
+          9
+        ],
+        [
+          "talk.politics.misc",
+          3
+        ],
+        [
+          "alt.atheism",
+          2
+        ]
+      ]
+    },
+    "22": {
+      "total_docs": 639,
+      "top_categories": [
+        [
+          "comp.sys.mac.hardware",
+          289
+        ],
+        [
+          "misc.forsale",
+          140
+        ],
+        [
+          "comp.sys.ibm.pc.hardware",
+          98
+        ],
+        [
+          "sci.electronics",
+          45
+        ],
+        [
+          "comp.graphics",
+          22
+        ]
+      ]
+    },
+    "23": {
+      "total_docs": 268,
+      "top_categories": [
+        [
+          "talk.politics.mideast",
+          258
+        ],
+        [
+          "talk.politics.misc",
+          4
+        ],
+        [
+          "soc.religion.christian",
+          3
+        ],
+        [
+          "alt.atheism",
+          1
+        ],
+        [
+          "sci.med",
+          1
+        ]
+      ]
+    },
+    "24": {
+      "total_docs": 435,
+      "top_categories": [
+        [
+          "comp.sys.ibm.pc.hardware",
+          231
+        ],
+        [
+          "comp.sys.mac.hardware",
+          109
+        ],
+        [
+          "misc.forsale",
+          41
+        ],
+        [
+          "comp.os.ms-windows.misc",
+          37
+        ],
+        [
+          "sci.electronics",
+          15
+        ]
+      ]
+    },
+    "25": {
+      "total_docs": 475,
+      "top_categories": [
+        [
+          "alt.atheism",
+          269
+        ],
+        [
+          "soc.religion.christian",
+          97
+        ],
+        [
+          "talk.religion.misc",
+          64
+        ],
+        [
+          "sci.med",
+          29
+        ],
+        [
+          "talk.politics.misc",
+          6
+        ]
+      ]
+    },
+    "26": {
+      "total_docs": 686,
+      "top_categories": [
+        [
+          "rec.sport.baseball",
+          665
+        ],
+        [
+          "rec.sport.hockey",
+          17
+        ],
+        [
+          "talk.politics.mideast",
+          2
+        ],
+        [
+          "sci.med",
+          1
+        ],
+        [
+          "soc.religion.christian",
+          1
+        ]
+      ]
+    },
+    "27": {
+      "total_docs": 1303,
+      "top_categories": [
+        [
+          "alt.atheism",
+          167
+        ],
+        [
+          "rec.sport.baseball",
+          156
+        ],
+        [
+          "rec.motorcycles",
+          127
+        ],
+        [
+          "rec.sport.hockey",
+          127
+        ],
+        [
+          "talk.politics.misc",
+          127
+        ]
+      ]
+    },
+    "28": {
+      "total_docs": 644,
+      "top_categories": [
+        [
+          "sci.space",
+          556
+        ],
+        [
+          "comp.graphics",
+          22
+        ],
+        [
+          "alt.atheism",
+          18
+        ],
+        [
+          "sci.med",
+          10
+        ],
+        [
+          "comp.windows.x",
+          5
+        ]
+      ]
+    },
+    "29": {
+      "total_docs": 232,
+      "top_categories": [
+        [
+          "talk.politics.misc",
+          118
+        ],
+        [
+          "soc.religion.christian",
+          70
+        ],
+        [
+          "alt.atheism",
+          23
+        ],
+        [
+          "talk.religion.misc",
+          16
+        ],
+        [
+          "sci.med",
+          2
+        ]
+      ]
+    }
+  }
+}
