@@ -1,13 +1,15 @@
 """
-Build Embeddings & Vector Database (Tasks 29-35, 37-39)
-========================================================
-This script:
-  1. Loads the cleaned corpus from Phase 3
-  2. Generates vector embeddings using sentence-transformers
-  3. Saves raw embeddings to disk (Task 30)
-  4. Builds and populates a FAISS vector store (Tasks 33-34)
-  5. Runs a test semantic search query (Task 37)
-  6. Persists the vector store to disk (Task 39)
+Build Embeddings & Vector Database
+====================================
+Generates embeddings for all cleaned documents and stores them in FAISS.
+
+Steps:
+  1. Load the cleaned corpus
+  2. Generate vector embeddings (batched)
+  3. Save raw embeddings to disk
+  4. Build and populate FAISS index
+  5. Run test queries to verify search quality
+  6. Persist everything to disk
 
 Run from project root:
     python scripts/build_vector_db.py
@@ -17,7 +19,6 @@ import os
 import sys
 import pandas as pd
 
-# Add project root to path for imports
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
 
@@ -29,9 +30,7 @@ CORPUS_PATH = os.path.join(PROCESSED_DIR, "cleaned_corpus.parquet")
 
 
 def build():
-    # ============================================================
     # Step 1: Load cleaned corpus
-    # ============================================================
     print("=" * 60)
     print("Step 1: Loading cleaned corpus...")
     print("=" * 60)
@@ -42,48 +41,39 @@ def build():
     categories = df["category"].tolist()
     filenames = df["filename"].tolist()
 
-    # ============================================================
-    # Step 2: Generate embeddings (Task 29)
-    # ============================================================
+    # Step 2: Generate embeddings
     print("=" * 60)
     print("Step 2: Generating embeddings (batch processing)...")
     print("=" * 60)
     embed_service = EmbeddingService()
-
-    # Task 29: Process in batches to manage memory
-    embeddings = embed_service.encode(texts, batch_size=64, show_progress=True)
+    embeddings = embed_service.encode_batch(texts, batch_size=64, show_progress=True)
     print(f"Generated embeddings: {embeddings.shape}\n")
 
-    # Task 30: Save raw embeddings to prevent re-computation
+    # Step 3: Save embeddings to disk (so we never recompute)
     print("=" * 60)
     print("Step 3: Saving raw embeddings to disk...")
     print("=" * 60)
     embed_service.save_embeddings(embeddings)
     print()
 
-    # ============================================================
-    # Step 4: Build FAISS vector store (Tasks 33-35)
-    # ============================================================
+    # Step 4: Build FAISS vector store
     print("=" * 60)
     print("Step 4: Building FAISS vector store...")
     print("=" * 60)
     vector_store = VectorStore(dimension=embeddings.shape[1])
 
-    # Task 34: Insert documents with metadata
     metadata_list = []
     for i in range(len(df)):
         metadata_list.append({
             "category": categories[i],
             "filename": filenames[i],
-            "text": texts[i][:500],  # Store first 500 chars for display
+            "text": texts[i][:500],
         })
 
-    vector_store.insert(embeddings, metadata_list)
+    vector_store.add_documents(embeddings, metadata_list)
     print()
 
-    # ============================================================
-    # Step 5: Test semantic search (Task 37)
-    # ============================================================
+    # Step 5: Verify search quality with test queries
     print("=" * 60)
     print("Step 5: Testing semantic search...")
     print("=" * 60)
@@ -106,19 +96,17 @@ def build():
             print(f"     {r['text'][:100]}...")
     print()
 
-    # ============================================================
-    # Step 6: Persist vector store (Task 39)
-    # ============================================================
+    # Step 6: Persist to disk
     print("=" * 60)
     print("Step 6: Persisting vector store to disk...")
     print("=" * 60)
     vector_store.save()
 
-    # Final summary
+    # Summary
     print(f"\n{'=' * 60}")
-    print("BUILD COMPLETE - SUMMARY")
+    print("BUILD COMPLETE")
     print("=" * 60)
-    print(f"  Documents indexed:     {vector_store.total_documents}")
+    print(f"  Documents indexed:     {len(metadata_list)}")
     print(f"  Embedding dimension:   {embeddings.shape[1]}")
     print(f"  Embedding model:       all-MiniLM-L6-v2")
     print(f"  Vector DB:             FAISS (IndexFlatIP)")

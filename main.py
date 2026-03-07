@@ -3,7 +3,7 @@ Semantic Search & Fuzzy Clustering API
 =======================================
 Main entry point for the FastAPI application.
 
-Run with: uvicorn main:app --host 0.0.0.0 --port 8000
+Run with: uvicorn main:app --host 127.0.0.1 --port 8000
 """
 
 import os
@@ -12,7 +12,6 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# Ensure project root is in path
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, PROJECT_ROOT)
 
@@ -29,15 +28,11 @@ logger = setup_logger("semantic_search.main")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Mount services using FastAPI lifespan events.
-
-    Optimized startup: loads pre-built indexes from disk.
-    """
+    """Load all services at startup, tear down on shutdown."""
     logger.info("=" * 50)
     logger.info("Starting Semantic Search API...")
     logger.info("=" * 50)
 
-    # Initialize services using config.yaml parameters
     embedding_service = EmbeddingService(
         model_name=config["embedding"]["model_name"]
     )
@@ -53,7 +48,6 @@ async def lifespan(app: FastAPI):
         cluster_service=cluster_service,
     )
 
-    # Load pre-built models from disk
     vector_loaded = vector_store.load()
     if not vector_loaded:
         logger.warning("No vector store found. Run 'python scripts/build_vector_db.py' first.")
@@ -63,10 +57,8 @@ async def lifespan(app: FastAPI):
     except FileNotFoundError:
         logger.warning("No clustering model found. Run 'python scripts/build_clusters.py' first.")
 
-    # Pre-load embedding model
-    _ = embedding_service.model
+    _ = embedding_service.model  # warm up
 
-    # Inject services into routes
     set_services(embedding_service, vector_store, semantic_cache, cluster_service)
 
     logger.info("API ready! All services loaded.")
@@ -80,8 +72,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Semantic Search & Clustering API",
     description=(
-        "A full-stack NLP pipeline performing semantic search over the "
-        "20 Newsgroups dataset with fuzzy clustering and a custom semantic cache."
+        "A semantic search pipeline over the 20 Newsgroups dataset "
+        "with fuzzy clustering and a custom semantic cache."
     ),
     version="1.0.0",
     lifespan=lifespan,

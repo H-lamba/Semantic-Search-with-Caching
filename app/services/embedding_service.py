@@ -1,106 +1,94 @@
 """
-Embedding Service (Tasks 26-28, 30)
-====================================
-Handles loading the embedding model and generating vector embeddings.
+Embedding Service
+=================
+Wraps sentence-transformers to provide a clean interface for encoding
+documents and queries into dense vector representations.
 
-MODEL SELECTION (Task 26):
-    We chose 'all-MiniLM-L6-v2' from the sentence-transformers library.
+We chose all-MiniLM-L6-v2 for this project after evaluating several options:
 
-JUSTIFICATION (Task 27):
-    1. SEMANTIC QUALITY: This model is specifically trained for semantic
-       similarity tasks using a contrastive learning objective on 1B+ sentence
-       pairs. It maps sentences to a 384-dimensional dense vector space where
-       semantically similar texts have high cosine similarity.
+Why all-MiniLM-L6-v2:
+    - 384-dimensional vectors — good balance between quality and storage
+    - Trained on 1B+ sentence pairs for semantic similarity
+    - Only ~80MB / 22M params — runs fine on CPU without a GPU
+    - Consistently ranks well on MTEB benchmarks for retrieval tasks
+    - Produces L2-normalized embeddings, so dot product = cosine similarity
 
-    2. EFFICIENCY: At only 22M parameters (80MB), it is lightweight enough to
-       run on CPU without a GPU, making it ideal for development and Docker
-       deployment. It encodes ~2800 sentences/sec on GPU and ~50/sec on CPU.
-
-    3. DIMENSIONALITY: 384 dimensions provides a good balance — high enough for
-       rich semantic representation, low enough for efficient FAISS indexing and
-       storage. Compare: all-mpnet-base-v2 produces 768-dim vectors (2x storage
-       and slower search) with only marginally better quality.
-
-    4. PROVEN TRACK RECORD: Consistently ranks among the top models on the
-       MTEB (Massive Text Embedding Benchmark) for its size class.
-
-    5. COMPATIBILITY: Designed for natural English text (which aligns with our
-       Phase 3 decision to preserve natural sentence structure).
+Why not larger models:
+    - all-mpnet-base-v2 (768-dim) gives marginal quality improvement but
+      doubles storage and slows search. For 19K documents it's overkill.
+    - OpenAI/Cohere API embeddings would add latency, cost, and an external
+      dependency for a self-contained demo.
 """
 
 import os
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
-# Model config
-MODEL_NAME = "all-MiniLM-L6-v2"
-EMBEDDING_DIM = 384
-
-# Paths
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EMBEDDINGS_PATH = os.path.join(PROJECT_ROOT, "models", "embeddings.npy")
 
 
 class EmbeddingService:
-    """Wrapper for the sentence-transformers embedding model.
+    """Handles all embedding operations for documents and queries.
 
-    Task 28: Loads the model efficiently with lazy initialization—the model
-    is only loaded into memory when first needed, not at import time.
+    Uses lazy initialization — the model is loaded on first use to keep
+    startup fast when only loading saved embeddings.
     """
 
-    def __init__(self, model_name=MODEL_NAME):
+    def __init__(self, model_name="all-MiniLM-L6-v2"):
         self.model_name = model_name
         self._model = None
 
     @property
     def model(self):
-        """Lazy-load the embedding model on first access."""
+        """Lazy-load the transformer model on first access."""
         if self._model is None:
             print(f"Loading embedding model: {self.model_name}...")
             self._model = SentenceTransformer(self.model_name)
             print(f"Model loaded. Embedding dimension: {self._model.get_sentence_embedding_dimension()}")
         return self._model
 
-    def encode(self, texts, batch_size=64, show_progress=True):
-        """Encode a list of texts into vector embeddings.
+    def encode_batch(self, texts, batch_size=64, show_progress=True):
+        """Encode a list of texts into embeddings.
 
         Args:
             texts: List of strings to encode.
-            batch_size: Number of texts to process at once (Task 29).
-            show_progress: Show progress bar during encoding.
+            batch_size: Texts per batch (64 balances speed vs memory).
+            show_progress: Show a tqdm progress bar.
 
         Returns:
-            numpy array of shape (len(texts), EMBEDDING_DIM)
+            numpy array of shape (len(texts), 384).
         """
         embeddings = self.model.encode(
             texts,
             batch_size=batch_size,
             show_progress_bar=show_progress,
-            normalize_embeddings=True,  # L2 normalize for cosine similarity
+            normalize_embeddings=True,  # L2-normalize so dot product = cosine sim
         )
         return np.array(embeddings, dtype=np.float32)
 
     def encode_single(self, text):
-        """Encode a single text string into a vector embedding.
+        """Encode a single query string.
 
-        Used for encoding individual search queries at runtime.
+        Returns:
+            1D numpy array of shape (384,).
         """
         embedding = self.model.encode(
             [text],
             normalize_embeddings=True,
         )
-        return np.array(embedding, dtype=np.float32)[0]
+        return np.array(embedding[0], dtype=np.float32)
 
     def save_embeddings(self, embeddings, path=None):
-        """Save embeddings to disk to prevent re-computation (Task 30)."""
-        save_path = path or EMBEDDINGS_PATH
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        np.save(save_path, embeddings)
-        print(f"Saved embeddings ({embeddings.shape}) to {save_path}")
+        """Save embeddings to disk so we don't have to recompute them."""
+        path = path or EMBEDDINGS_PATH
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        np.save(path, embeddings)
+        print(f"Saved {len(embeddings)} embeddings to {path}")
 
     def load_embeddings(self, path=None):
-        """Load pre-computed embeddings from disk."""
-        load_path = path or EMBEDDINGS_PATH
-        embeddings = np.load(load_path)
-        print(f"Loaded embeddings ({embeddings.shape}) from {load_path}")
+        """Load previously saved embeddings from disk."""
+        path = path or EMBEDDINGS_PATH
+        embeddings = np.load(path)
+        print(f"Loaded {len(embeddings)} embeddings from {path}")
         return embeddings

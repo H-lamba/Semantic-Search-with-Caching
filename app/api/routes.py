@@ -1,18 +1,15 @@
 """
-API Route Handlers (Tasks 79-87)
-==================================
-Implements the three core API endpoints:
-  - POST /query     : Semantic search with cache (Tasks 79-83)
-  - GET /cache/stats : Cache statistics (Tasks 84-85)
-  - DELETE /cache    : Flush cache (Tasks 86-87)
+API Route Handlers
+==================
+Three endpoints: search with cache, cache stats, and cache flush.
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from .schemas import QueryRequest, QueryResponse, SearchResult, CacheStatsResponse, FlushResponse
 
 router = APIRouter()
 
-# These will be injected via dependency injection from main.py (Task 88)
+# Service instances (injected at startup)
 _embedding_service = None
 _vector_store = None
 _semantic_cache = None
@@ -20,7 +17,7 @@ _cluster_service = None
 
 
 def set_services(embedding_service, vector_store, semantic_cache, cluster_service):
-    """Set service instances (called from main.py during startup)."""
+    """Called from main.py during startup to inject service instances."""
     global _embedding_service, _vector_store, _semantic_cache, _cluster_service
     _embedding_service = embedding_service
     _vector_store = vector_store
@@ -28,42 +25,33 @@ def set_services(embedding_service, vector_store, semantic_cache, cluster_servic
     _cluster_service = cluster_service
 
 
-# ============================================================
-# POST /query (Tasks 79-83)
-# ============================================================
 @router.post("/query", response_model=QueryResponse)
 async def search_query(request: QueryRequest):
-    """Semantic search endpoint with semantic cache integration.
+    """Semantic search with cache integration.
 
-    Task 80: Generate embedding for the incoming query.
-    Task 81: Check semantic cache first.
-    Task 82: On cache miss, perform vector DB retrieval and cache the result.
-    Task 83: Return exact keys as specified.
+    Flow: embed query -> check cache -> on miss, search FAISS -> cache result.
     """
     query = request.query
-
-    # Task 80: Generate embedding for query
     query_embedding = _embedding_service.encode_single(query)
 
-    # Get cluster info for the query (fuzzy probability distribution)
+    # Get fuzzy cluster assignment for the query
     dominant_cluster = 0
     cluster_probs = None
     cluster_probs_dict = None
     if _cluster_service and _cluster_service.gmm is not None:
         cluster_probs = _cluster_service.predict(query_embedding)
         dominant_cluster = int(cluster_probs.argmax())
-        # Show top 5 cluster probabilities as a fuzzy distribution
+        # Return top 5 cluster probabilities as a distribution
         top_indices = cluster_probs.argsort()[-5:][::-1]
         cluster_probs_dict = {
             f"cluster_{int(i)}": round(float(cluster_probs[i]), 4)
             for i in top_indices
         }
 
-    # Task 81: Check semantic cache
+    # Check cache first
     cache_result = _semantic_cache.get(query, query_embedding=query_embedding)
 
     if cache_result is not None:
-        # Cache HIT
         return QueryResponse(
             query=query,
             cache_hit=True,
@@ -74,7 +62,7 @@ async def search_query(request: QueryRequest):
             cluster_probabilities=cluster_probs_dict,
         )
 
-    # Task 82: Cache MISS — perform vector DB retrieval
+    # Cache miss — search the vector store
     search_results = _vector_store.search(query_embedding, top_k=5)
 
     formatted_results = [
@@ -86,7 +74,7 @@ async def search_query(request: QueryRequest):
         for r in search_results
     ]
 
-    # Store in cache for future queries
+    # Store in cache for future similar queries
     _semantic_cache.set(
         query=query,
         result=formatted_results,
@@ -105,28 +93,16 @@ async def search_query(request: QueryRequest):
     )
 
 
-# ============================================================
-# GET /cache/stats (Tasks 84-85)
-# ============================================================
 @router.get("/cache/stats", response_model=CacheStatsResponse)
 async def cache_stats():
-    """Return current cache statistics (Task 85).
-
-    Returns: total_entries, hit_count, miss_count, hit_rate.
-    """
+    """Return current cache statistics."""
     stats = _semantic_cache.get_stats()
     return CacheStatsResponse(**stats)
 
 
-# ============================================================
-# DELETE /cache (Tasks 86-87)
-# ============================================================
 @router.delete("/cache", response_model=FlushResponse)
 async def flush_cache():
-    """Flush the semantic cache completely (Task 87).
-
-    Calls the flush method to empty the cache and reset all stats.
-    """
+    """Flush the cache and reset all stats."""
     _semantic_cache.flush()
     return FlushResponse(
         message="Cache flushed successfully. All entries and stats reset.",

@@ -1,19 +1,13 @@
 """
-FastAPI API Routes (Tasks 76-88)
-=================================
-Defines the API endpoints for the semantic search service.
+Pydantic request/response schemas for the API.
 """
 
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict
 
 
-# ============================================================
-# Request/Response Models (Tasks 77-78)
-# ============================================================
-
 class QueryRequest(BaseModel):
-    """POST /query request body (Task 77)."""
+    """POST /query request body."""
     query: str = Field(..., description="Natural language search query", min_length=1)
 
 
@@ -25,10 +19,7 @@ class SearchResult(BaseModel):
 
 
 class QueryResponse(BaseModel):
-    """POST /query response body (Task 78).
-
-    Returns exact keys as specified in Task 83.
-    """
+    """POST /query response body."""
     query: str
     cache_hit: bool
     matched_query: Optional[str] = None
@@ -39,7 +30,7 @@ class QueryResponse(BaseModel):
 
 
 class CacheStatsResponse(BaseModel):
-    """GET /cache/stats response body (Task 85)."""
+    """GET /cache/stats response body."""
     total_entries: int
     hit_count: int
     miss_count: int
@@ -47,6 +38,6 @@ class CacheStatsResponse(BaseModel):
 
 
 class FlushResponse(BaseModel):
-    """DELETE /cache response body (Task 87)."""
+    """DELETE /cache response body."""
     message: str
     status: str

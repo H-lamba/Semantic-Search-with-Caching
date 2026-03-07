@@ -1,10 +1,10 @@
 """
-Phase 3: Data Preprocessing & Cleaning (Tasks 17-25)
-=====================================================
+Data Preprocessing & Cleaning
+==============================
 This script cleans the raw 20 Newsgroups corpus by handling ALL anomalies
 discovered during EDA (see docs/eda_findings.md).
 
-CRITICAL DESIGN DECISION:
+Design note:
     We deliberately chose NOT to remove stopwords, punctuation, or apply
     lemmatization. Modern dense embedding models (e.g., sentence-transformers)
     are trained on natural human language. Their attention mechanisms rely on
@@ -45,12 +45,9 @@ PROCESSED_DIR = os.path.join(PROJECT_ROOT, "data", "processed")
 MIN_BODY_LENGTH = 50  # Drop posts with cleaned body shorter than this
 
 
-# ============================================================
-# Task 17: Strip email headers and footers
-# ============================================================
-# DECISION: Headers are everything BEFORE the first blank line (\n\n).
-# Every single post (100%) has these headers (From, Subject, Path, etc.).
-# They add no semantic value for search/clustering and would pollute embeddings.
+# Strip email headers and footers
+# Headers are everything before the first blank line (From, Subject, etc.).
+# 100% of posts have them — they add no semantic value and would pollute embeddings.
 def strip_headers(text):
     """Remove email headers (everything before the first blank line)."""
     if "\n\n" in text:
@@ -58,14 +55,11 @@ def strip_headers(text):
     return text
 
 
-# ============================================================
-# Task 18 & 19: Deliberate pruning decisions (documented in comments)
-# ============================================================
+# --- Pruning decisions ---
 
-# DECISION: Remove quoted replies (lines starting with > or |).
-# 51.8% of posts contain these. They duplicate content from other posts
-# and would cause the same text to appear in multiple embeddings, biasing
-# clustering and retrieval toward heavily-discussed threads.
+# Remove quoted replies (lines starting with > or |).
+# 51.8% of posts contain these — they duplicate content and would bias
+# clustering toward heavily-discussed threads.
 def remove_quoted_replies(text):
     """Remove lines that are quoted replies from previous messages."""
     lines = text.split("\n")
@@ -73,9 +67,9 @@ def remove_quoted_replies(text):
     return "\n".join(cleaned)
 
 
-# DECISION: Remove email signatures (everything after '-- ' or '--' on its own line).
-# 35% of posts have these. Signatures contain personal info (names, phone numbers,
-# ASCII art) that is irrelevant to the topic and would harm semantic quality.
+# Remove email signatures (everything after '-- ' marker).
+# 35% of posts have these — personal info, phone numbers, ASCII art that
+# is irrelevant to topic semantics.
 def remove_signatures(text):
     """Remove email signature blocks (after -- marker)."""
     patterns = ["\n-- \n", "\n--\n"]
@@ -85,47 +79,39 @@ def remove_signatures(text):
     return text
 
 
-# DECISION: Remove email addresses from body text.
-# 80.5% of posts contain email addresses in the body. These are personal info
-# and do not contribute to topic semantics.
+# Remove email addresses from body (80.5% of posts have them).
 def remove_email_addresses(text):
     """Remove email addresses from the text."""
     return re.sub(r"[\w.\-+]+@[\w.\-]+\.\w+", "", text)
 
 
-# DECISION: Strip HTML-like tags.
-# 60.5% of posts contain angle-bracket content. While most are not true HTML,
-# stripping them removes noise without losing significant semantic content.
+# Strip HTML-like tags (60.5% of posts have angle-bracket content).
 def remove_html_tags(text):
     """Remove HTML-like tags and angle bracket content."""
     return re.sub(r"<[^>]+>", "", text)
 
 
-# DECISION: Remove non-ASCII characters.
-# Only 0.4% of posts affected, but these garbled characters add noise.
+# Remove non-ASCII characters (0.4% of posts, garbled encoding artifacts).
 def remove_non_ascii(text):
     """Remove non-ASCII characters."""
     return text.encode("ascii", errors="ignore").decode("ascii")
 
 
-# DECISION: Remove URLs.
-# URLs don't contribute to topic semantics.
+# Remove URLs — don't contribute to topic semantics.
 def remove_urls(text):
     """Remove http/ftp URLs from text."""
     return re.sub(r"https?://\S+|ftp://\S+|www\.\S+", "", text)
 
 
-# ============================================================
-# Tasks 20-23: Text normalization
-# ============================================================
-# CRITICAL DECISION: We deliberately DO NOT apply the following:
+# --- Text normalization ---
+# We deliberately DO NOT apply the following:
 #   - Stopword removal
 #   - Lemmatization
 #   - Punctuation stripping
 #   - Aggressive tokenization
 #
-# JUSTIFICATION: Modern transformer-based embedding models (such as
-# sentence-transformers' all-MiniLM-L6-v2) are pre-trained on natural
+# Reason: Modern transformer-based embedding models (like all-MiniLM-L6-v2)
+# are pre-trained on natural
 # English text. Their self-attention mechanisms depend on full grammatical
 # structure — articles, prepositions, punctuation, and word order — to
 # produce accurate semantic representations.
@@ -200,7 +186,7 @@ def load_raw_data():
 
 
 def run_cleaning():
-    """Execute the full Phase 3 cleaning pipeline."""
+    """Execute the full cleaning pipeline."""
 
     # Step 1: Load raw data
     print("=" * 60)
@@ -239,8 +225,8 @@ def run_cleaning():
     df = df.drop_duplicates(subset=["cleaned_text"], keep="first").reset_index(drop=True)
     print(f"Removed {before - len(df)} body duplicates. Remaining: {len(df)}\n")
 
-    # Step 5: Filter empty/very short documents (Task 24)
-    # DECISION: Drop documents with cleaned text shorter than 50 characters.
+    # Step 5: Filter empty/very short documents
+    # Drop documents with cleaned text shorter than 50 characters.
     print("=" * 60)
     print(f"Step 5: Filtering documents with cleaned text < {MIN_BODY_LENGTH} chars...")
     print("=" * 60)
@@ -249,7 +235,7 @@ def run_cleaning():
     df = df[df["cleaned_len"] >= MIN_BODY_LENGTH].reset_index(drop=True)
     print(f"Removed {before - len(df)} short/empty documents. Remaining: {len(df)}\n")
 
-    # Step 6: Save cleaned corpus (Task 25)
+    # Step 6: Save cleaned corpus
     print("=" * 60)
     print("Step 6: Saving cleaned corpus...")
     print("=" * 60)

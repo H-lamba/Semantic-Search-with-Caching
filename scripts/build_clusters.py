@@ -1,12 +1,16 @@
 """
-Build Fuzzy Clustering Model (Tasks 41-58)
-============================================
-This script:
-  1. Loads pre-computed embeddings from Phase 4
-  2. Finds optimal number of clusters via BIC/AIC (Tasks 43-44)
-  3. Trains GMM fuzzy clustering model (Task 46)
-  4. Analyzes cluster quality (Tasks 49-54)
-  5. Saves model and adds cluster info to vector store (Tasks 55, 57)
+Build Fuzzy Clustering Model
+==============================
+Trains a Gaussian Mixture Model on document embeddings and analyzes
+cluster quality. Uses BIC/AIC to find the optimal number of clusters.
+
+Steps:
+  1. Load embeddings and corpus
+  2. Find optimal cluster count via BIC/AIC
+  3. Train GMM at the optimal k
+  4. Analyze cluster quality and composition
+  5. Save model to disk
+  6. Tag vector store metadata with cluster assignments
 
 Run from project root:
     python scripts/build_clusters.py
@@ -23,16 +27,13 @@ sys.path.insert(0, PROJECT_ROOT)
 
 from app.services.clustering_service import FuzzyClusterService
 from app.services.vector_store import VectorStore
-from app.services.embedding_service import EmbeddingService
 
 PROCESSED_DIR = os.path.join(PROJECT_ROOT, "data", "processed")
 MODELS_DIR = os.path.join(PROJECT_ROOT, "models")
 
 
 def build_clusters():
-    # ============================================================
     # Step 1: Load embeddings and corpus
-    # ============================================================
     print("=" * 60)
     print("Step 1: Loading embeddings and corpus...")
     print("=" * 60)
@@ -42,9 +43,7 @@ def build_clusters():
     print(f"Loaded {len(embeddings)} embeddings of dim {embeddings.shape[1]}")
     print(f"Loaded {len(df)} documents\n")
 
-    # ============================================================
-    # Step 2: Find optimal number of clusters (Tasks 43-44)
-    # ============================================================
+    # Step 2: Find optimal number of clusters
     print("=" * 60)
     print("Step 2: Finding optimal cluster count (BIC/AIC)...")
     print("=" * 60)
@@ -53,7 +52,6 @@ def build_clusters():
         embeddings, min_k=10, max_k=30, step=2
     )
 
-    # Task 45: Document evidence for cluster count
     print(f"\nCluster selection results:")
     print(f"{'k':>4} | {'BIC':>12} | {'AIC':>12} | {'Silhouette':>10}")
     print("-" * 45)
@@ -61,9 +59,8 @@ def build_clusters():
         marker = " <-- optimal" if k == optimal_k else ""
         print(f"{k:>4} | {v['bic']:>12.0f} | {v['aic']:>12.0f} | {v['silhouette']:>10.4f}{marker}")
 
-    # Save cluster selection results
+    # Save selection results
     with open(os.path.join(MODELS_DIR, "cluster_selection.json"), "w") as f:
-        # Convert numpy float32 to native Python float for JSON
         serializable_results = {
             str(k): {key: float(val) for key, val in v.items()}
             for k, v in results.items()
@@ -71,24 +68,20 @@ def build_clusters():
         json.dump({"results": serializable_results, "optimal_k": int(optimal_k)}, f, indent=2)
     print(f"\nSaved cluster selection results to models/cluster_selection.json\n")
 
-    # ============================================================
-    # Step 3: Train GMM model (Task 46-47)
-    # ============================================================
+    # Step 3: Train GMM
     print("=" * 60)
     print(f"Step 3: Training GMM with k={optimal_k}...")
     print("=" * 60)
     cluster_probs = cluster_service.train(embeddings, n_clusters=optimal_k)
 
-    # Task 48: Verify output is a distribution, not a single label
-    print("\nVerification (Task 48):")
+    # Verify output is a distribution (not a hard label)
+    print("\nVerification:")
     sample_probs = cluster_probs[0]
-    print(f"  Sample doc cluster probs: {sample_probs[:5]}... (showing first 5)")
+    print(f"  Sample doc cluster probs: {sample_probs[:5]}... (first 5)")
     print(f"  Sum = {sample_probs.sum():.6f} (should be 1.0)")
-    print(f"  Is distribution (not label): {len(sample_probs) > 1 and abs(sample_probs.sum() - 1.0) < 1e-5}")
+    print(f"  Is distribution: {len(sample_probs) > 1 and abs(sample_probs.sum() - 1.0) < 1e-5}")
 
-    # ============================================================
-    # Step 4: Analyze clusters (Tasks 49-54)
-    # ============================================================
+    # Step 4: Analyze clusters
     print(f"\n{'=' * 60}")
     print("Step 4: Analyzing cluster quality...")
     print("=" * 60)
@@ -98,7 +91,6 @@ def build_clusters():
     print(f"  Boundary cases:               {analysis['boundary_count']} ({analysis['boundary_pct']})")
     print(f"  Uncertain docs (<0.3):         {analysis['uncertain_count']} ({analysis['uncertain_pct']})")
 
-    # Task 53-54: Print cluster contents
     print(f"\n  Cluster-to-Category Mapping:")
     print(f"  {'Cluster':>8} | {'Docs':>5} | Top Categories")
     print(f"  {'-'*60}")
@@ -107,7 +99,6 @@ def build_clusters():
         print(f"  {c_id:>8} | {info['total_docs']:>5} | {top_cats}")
 
     # Save analysis
-    # Convert tuples to lists for JSON
     analysis_json = analysis.copy()
     for c_id in analysis_json["cluster_category_mapping"]:
         info = analysis_json["cluster_category_mapping"][c_id]
@@ -117,17 +108,13 @@ def build_clusters():
         json.dump(analysis_json, f, indent=2)
     print(f"\n  Saved analysis to models/cluster_analysis.json")
 
-    # ============================================================
-    # Step 5: Save model (Task 55)
-    # ============================================================
+    # Step 5: Save model
     print(f"\n{'=' * 60}")
     print("Step 5: Saving trained model...")
     print("=" * 60)
     cluster_service.save()
 
-    # ============================================================
-    # Step 6: Add cluster info to vector store metadata (Task 57)
-    # ============================================================
+    # Step 6: Add cluster info to vector store metadata
     print(f"\n{'=' * 60}")
     print("Step 6: Adding cluster info to vector store metadata...")
     print("=" * 60)
@@ -140,9 +127,9 @@ def build_clusters():
         vector_store.save()
         print("Updated vector store metadata with cluster info.")
 
-    # Final summary (Task 58)
+    # Summary
     print(f"\n{'=' * 60}")
-    print("CLUSTERING COMPLETE - SUMMARY")
+    print("CLUSTERING COMPLETE")
     print("=" * 60)
     print(f"  Algorithm:             Gaussian Mixture Model (GMM)")
     print(f"  Optimal clusters:      {optimal_k}")

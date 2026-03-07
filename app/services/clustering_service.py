@@ -1,43 +1,27 @@
 """
-Fuzzy Clustering Service (Tasks 41-58)
-=======================================
-Implements fuzzy (soft) clustering on document embeddings using
-Gaussian Mixture Models (GMM).
+Fuzzy Clustering Service (GMM)
+===============================
+Uses Gaussian Mixture Models to assign soft cluster memberships to documents.
 
-ALGORITHM SELECTION (Task 41):
-    We chose Gaussian Mixture Models (GMM) over Fuzzy C-Means (FCM).
+Why GMM over other approaches:
+    - Produces probability distributions, not hard labels — a document about
+      gun legislation can be 42% politics, 35% firearms, 23% misc
+    - Flexible elliptical cluster shapes (unlike K-Means' spherical assumption)
+    - Built-in model selection via BIC/AIC for choosing cluster count
+    - sklearn's implementation is fast and well-tested
 
-    JUSTIFICATION:
-    1. PROBABILISTIC OUTPUT: GMM naturally outputs a probability distribution
-       over clusters for each document (P(cluster_k | document)). This is
-       exactly the "fuzzy cluster membership" the task requires — each document
-       gets a vector of probabilities summing to 1, NOT a hard label.
-
-    2. CLUSTER SHAPE FLEXIBILITY: GMM models each cluster as a multivariate
-       Gaussian with its own covariance, allowing elliptical cluster shapes.
-       FCM assumes spherical clusters (like K-Means), which is unrealistic
-       for high-dimensional embedding spaces where topics overlap unevenly.
-
-    3. MODEL SELECTION: GMM provides BIC (Bayesian Information Criterion) and
-       AIC (Akaike Information Criterion) scores for principled selection of
-       the optimal number of clusters (Task 43-44).
-
-    4. SCIKIT-LEARN INTEGRATION: sklearn's GaussianMixture is battle-tested,
-       well-documented, and integrates seamlessly with our numpy embeddings.
-
-    Why not hard clustering (K-Means)?
-        Hard assignments are STRICTLY FORBIDDEN by the task specification.
-        A document about "space electronics" genuinely belongs to both
-        sci.space and sci.electronics — hard labels would lose this signal.
+Why not Fuzzy C-Means:
+    - GMM handles high-dimensional data better with PCA preprocessing
+    - BIC/AIC give a principled way to pick k (FCM lacks this)
+    - sklearn has no FCM — would need skfuzzy which is less maintained
 """
 
 import os
-import json
 import pickle
 import numpy as np
 from sklearn.mixture import GaussianMixture
-from sklearn.metrics import silhouette_score
 from sklearn.decomposition import PCA
+from sklearn.metrics import silhouette_score
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "gmm_model.pkl")
@@ -45,95 +29,75 @@ CLUSTER_PROBS_PATH = os.path.join(PROJECT_ROOT, "models", "cluster_probs.npy")
 
 
 class FuzzyClusterService:
-    """Manages fuzzy clustering of document embeddings.
-
-    Each document receives a probability distribution over clusters,
-    NOT a single hard label. This enables identification of:
-      - Dominant cluster members (high single-cluster probability)
-      - Boundary cases (split between 2-3 clusters)
-      - Uncertain documents (flat distribution across many clusters)
-    """
+    """GMM-based fuzzy clustering for document embeddings."""
 
     def __init__(self):
         self.gmm = None
-        self.n_clusters = None
-        self.cluster_probs = None  # shape: (n_docs, n_clusters)
+        self.pca = None
+        self.cluster_probs = None
 
     def find_optimal_clusters(self, embeddings, min_k=10, max_k=30, step=2):
-        """Determine optimal number of clusters using BIC/AIC (Tasks 43-44).
+        """Search for the best number of clusters using BIC, AIC, and silhouette.
 
-        We test a range of cluster counts and select the one that minimizes
-        BIC (Bayesian Information Criterion). BIC penalizes model complexity,
-        preventing overfitting to noise in the embedding space.
-
-        Args:
-            embeddings: numpy array of shape (n_docs, dim)
-            min_k: Minimum clusters to test
-            max_k: Maximum clusters to test
-            step: Step size for cluster range
+        We reduce dimensionality with PCA first (384 -> 50) to avoid GMM's
+        curse of dimensionality and speed up fitting.
 
         Returns:
-            dict with BIC, AIC, and silhouette scores for each k
+            results: dict mapping k -> {bic, aic, silhouette}
+            optimal_k: the k with lowest BIC
         """
-        # Reduce dimensionality for faster clustering (384 -> 50)
-        # This also helps with the curse of dimensionality in GMM
         print("Reducing dimensionality with PCA (384 -> 50)...")
-        pca = PCA(n_components=50, random_state=42)
-        reduced = pca.fit_transform(embeddings)
-        print(f"Explained variance ratio: {pca.explained_variance_ratio_.sum():.3f}\n")
+        self.pca = PCA(n_components=50, random_state=42)
+        reduced = self.pca.fit_transform(embeddings)
+        print(f"Explained variance ratio: {self.pca.explained_variance_ratio_.sum():.3f}\n")
 
         results = {}
-        k_range = range(min_k, max_k + 1, step)
+        best_bic = float("inf")
+        optimal_k = min_k
 
-        for k in k_range:
-            print(f"Testing k={k}...", end=" ")
+        for k in range(min_k, max_k + 1, step):
             gmm = GaussianMixture(
                 n_components=k,
-                covariance_type="diag",  # Diagonal covariance for efficiency
+                covariance_type="diag",
                 random_state=42,
-                n_init=3,
-                max_iter=200,
+                n_init=5,
+                max_iter=300,
             )
             gmm.fit(reduced)
 
             bic = gmm.bic(reduced)
             aic = gmm.aic(reduced)
-
-            # Silhouette score (sample for speed)
             labels = gmm.predict(reduced)
-            sample_idx = np.random.RandomState(42).choice(
-                len(reduced), min(5000, len(reduced)), replace=False
-            )
+
+            # Silhouette on a sample (full dataset is slow)
+            sample_size = min(5000, len(reduced))
+            rng = np.random.RandomState(42)
+            sample_idx = rng.choice(len(reduced), sample_size, replace=False)
             sil = silhouette_score(reduced[sample_idx], labels[sample_idx])
 
             results[k] = {"bic": bic, "aic": aic, "silhouette": sil}
-            print(f"BIC={bic:.0f}, AIC={aic:.0f}, Silhouette={sil:.4f}")
 
-        # Select k with minimum BIC
-        optimal_k = min(results, key=lambda k: results[k]["bic"])
+            if bic < best_bic:
+                best_bic = bic
+                optimal_k = k
+
+            print(f"Testing k={k}... BIC={bic:.0f}, AIC={aic:.0f}, Silhouette={sil:.4f}")
+
         print(f"\nOptimal k by BIC: {optimal_k}")
-
         return results, optimal_k
 
-    def train(self, embeddings, n_clusters, use_pca=True):
-        """Train the fuzzy clustering model (Task 46).
+    def train(self, embeddings, n_clusters=20):
+        """Train the GMM and return soft cluster assignments.
 
-        Args:
-            embeddings: numpy array of shape (n_docs, dim)
-            n_clusters: Number of clusters to use
-            use_pca: Whether to reduce dimensionality first
+        Returns:
+            numpy array of shape (n_docs, n_clusters) — each row sums to 1.0
         """
-        self.n_clusters = n_clusters
-
-        if use_pca:
-            print("Applying PCA dimensionality reduction...")
+        if self.pca is None:
             self.pca = PCA(n_components=50, random_state=42)
-            reduced = self.pca.fit_transform(embeddings)
-        else:
-            self.pca = None
-            reduced = embeddings
+            self.pca.fit(embeddings)
 
-        print(f"Training GMM with {n_clusters} clusters...")
+        reduced = self.pca.transform(embeddings)
+
         self.gmm = GaussianMixture(
             n_components=n_clusters,
             covariance_type="diag",
@@ -142,122 +106,91 @@ class FuzzyClusterService:
             max_iter=300,
         )
         self.gmm.fit(reduced)
-        print("GMM training complete.\n")
 
-        # Task 47: Generate cluster probability distribution for every document
         self.cluster_probs = self.gmm.predict_proba(reduced)
-        print(f"Generated cluster probabilities: {self.cluster_probs.shape}")
-        print(f"Sum of probs per doc (should be 1.0): {self.cluster_probs[0].sum():.6f}")
-
         return self.cluster_probs
 
     def predict(self, embedding):
-        """Calculate cluster distribution for a new query (Task 56).
-
-        Args:
-            embedding: numpy array of shape (dim,)
+        """Get cluster probabilities for a single embedding.
 
         Returns:
-            numpy array of cluster probabilities, shape (n_clusters,)
+            1D array of shape (n_clusters,) — probability distribution.
         """
         if self.gmm is None:
-            raise ValueError("Model not trained. Call train() or load() first.")
+            raise RuntimeError("Model not trained or loaded yet")
 
-        vec = embedding.reshape(1, -1)
-        if self.pca is not None:
-            vec = self.pca.transform(vec)
-        probs = self.gmm.predict_proba(vec)
-        return probs[0]
+        if embedding.ndim == 1:
+            embedding = embedding.reshape(1, -1)
 
-    def get_dominant_cluster(self, probs):
-        """Get the dominant cluster ID from a probability distribution."""
-        return int(np.argmax(probs))
+        reduced = self.pca.transform(embedding)
+        return self.gmm.predict_proba(reduced)[0]
 
     def analyze_clusters(self, cluster_probs, categories):
-        """Analyze cluster quality and produce report (Tasks 49-54, 58).
+        """Analyze cluster quality and composition.
 
-        Args:
-            cluster_probs: shape (n_docs, n_clusters)
-            categories: list of true category labels
-
-        Returns:
-            dict with analysis results
+        Computes confidence distribution and maps clusters to real categories.
         """
-        n_docs = len(cluster_probs)
-        dominant_clusters = np.argmax(cluster_probs, axis=1)
-        max_probs = np.max(cluster_probs, axis=1)
+        dominant = np.max(cluster_probs, axis=1)
+        assignments = np.argmax(cluster_probs, axis=1)
 
-        analysis = {
-            "n_documents": n_docs,
-            "n_clusters": cluster_probs.shape[1],
+        high = np.sum(dominant > 0.7)
+        boundary = np.sum((dominant >= 0.3) & (dominant <= 0.5))
+        uncertain = np.sum(dominant < 0.3)
+        total = len(cluster_probs)
+
+        # Map each cluster to its top real categories
+        cluster_mapping = {}
+        for c_id in range(cluster_probs.shape[1]):
+            mask = assignments == c_id
+            cluster_cats = [categories[i] for i in range(len(categories)) if mask[i]]
+
+            from collections import Counter
+            cat_counts = Counter(cluster_cats).most_common()
+
+            cluster_mapping[c_id] = {
+                "total_docs": int(mask.sum()),
+                "top_categories": cat_counts[:5],
+            }
+
+        return {
+            "high_confidence_count": int(high),
+            "high_confidence_pct": f"{high / total * 100:.1f}%",
+            "boundary_count": int(boundary),
+            "boundary_pct": f"{boundary / total * 100:.1f}%",
+            "uncertain_count": int(uncertain),
+            "uncertain_pct": f"{uncertain / total * 100:.1f}%",
+            "cluster_category_mapping": cluster_mapping,
         }
 
-        # Task 50: High confidence documents (dominant cluster > 0.7)
-        high_conf_mask = max_probs > 0.7
-        analysis["high_confidence_count"] = int(high_conf_mask.sum())
-        analysis["high_confidence_pct"] = f"{high_conf_mask.sum() / n_docs * 100:.1f}%"
-
-        # Task 51: Boundary cases (top prob < 0.5, but top 2 > 0.7 combined)
-        sorted_probs = np.sort(cluster_probs, axis=1)[:, ::-1]
-        boundary_mask = (sorted_probs[:, 0] < 0.5) & (sorted_probs[:, 0] + sorted_probs[:, 1] > 0.6)
-        analysis["boundary_count"] = int(boundary_mask.sum())
-        analysis["boundary_pct"] = f"{boundary_mask.sum() / n_docs * 100:.1f}%"
-
-        # Task 52: Uncertain documents (max prob < 0.3)
-        uncertain_mask = max_probs < 0.3
-        analysis["uncertain_count"] = int(uncertain_mask.sum())
-        analysis["uncertain_pct"] = f"{uncertain_mask.sum() / n_docs * 100:.1f}%"
-
-        # Task 49: Map original labels to fuzzy clusters
-        cluster_category_mapping = {}
-        for c in range(cluster_probs.shape[1]):
-            mask = dominant_clusters == c
-            if mask.sum() == 0:
-                continue
-            cat_counts = {}
-            for cat in np.array(categories)[mask]:
-                cat_counts[cat] = cat_counts.get(cat, 0) + 1
-            # Sort by count descending
-            sorted_cats = sorted(cat_counts.items(), key=lambda x: -x[1])
-            cluster_category_mapping[int(c)] = {
-                "total_docs": int(mask.sum()),
-                "top_categories": sorted_cats[:5],
-            }
-        analysis["cluster_category_mapping"] = cluster_category_mapping
-
-        return analysis
-
     def save(self, model_path=None, probs_path=None):
-        """Serialize the trained model to disk (Task 55)."""
-        m_path = model_path or MODEL_PATH
-        p_path = probs_path or CLUSTER_PROBS_PATH
+        """Save the trained model and cluster probabilities to disk."""
+        model_path = model_path or MODEL_PATH
+        probs_path = probs_path or CLUSTER_PROBS_PATH
+        os.makedirs(os.path.dirname(model_path), exist_ok=True)
 
-        os.makedirs(os.path.dirname(m_path), exist_ok=True)
+        with open(model_path, "wb") as f:
+            pickle.dump({"gmm": self.gmm, "pca": self.pca}, f)
 
-        # Save GMM model + PCA
-        with open(m_path, "wb") as f:
-            pickle.dump({"gmm": self.gmm, "pca": self.pca, "n_clusters": self.n_clusters}, f)
-        print(f"Saved GMM model to {m_path}")
-
-        # Save cluster probabilities
-        if self.cluster_probs is not None:
-            np.save(p_path, self.cluster_probs)
-            print(f"Saved cluster probs ({self.cluster_probs.shape}) to {p_path}")
+        np.save(probs_path, self.cluster_probs)
+        print(f"Saved GMM model to {model_path}")
+        print(f"Saved cluster probs ({self.cluster_probs.shape}) to {probs_path}")
 
     def load(self, model_path=None, probs_path=None):
-        """Load a trained model from disk."""
-        m_path = model_path or MODEL_PATH
-        p_path = probs_path or CLUSTER_PROBS_PATH
+        """Load a previously saved model from disk."""
+        model_path = model_path or MODEL_PATH
+        probs_path = probs_path or CLUSTER_PROBS_PATH
 
-        with open(m_path, "rb") as f:
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"No model found at {model_path}")
+
+        with open(model_path, "rb") as f:
             data = pickle.load(f)
-        self.gmm = data["gmm"]
-        self.pca = data["pca"]
-        self.n_clusters = data["n_clusters"]
-        print(f"Loaded GMM model ({self.n_clusters} clusters) from {m_path}")
+            self.gmm = data["gmm"]
+            self.pca = data["pca"]
 
-        if os.path.exists(p_path):
-            self.cluster_probs = np.load(p_path)
-            print(f"Loaded cluster probs ({self.cluster_probs.shape}) from {p_path}")
+        if os.path.exists(probs_path):
+            self.cluster_probs = np.load(probs_path)
 
-        return True
+        print(f"Loaded GMM model ({self.gmm.n_components} clusters) from {model_path}")
+        if self.cluster_probs is not None:
+            print(f"Loaded cluster probs ({self.cluster_probs.shape}) from {probs_path}")

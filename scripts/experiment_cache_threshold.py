@@ -1,10 +1,8 @@
 """
-Cache Tuning Experiment (Tasks 66-67)
-=======================================
+Cache Threshold Experiment
+===========================
 Explores how changing the similarity threshold affects cache performance.
-
-This script demonstrates the tunable parameter at the heart of the
-semantic cache: the cosine similarity threshold.
+The threshold is the core tunable parameter in the semantic cache.
 
 Run from project root:
     python scripts/experiment_cache_threshold.py
@@ -23,12 +21,12 @@ from app.services.embedding_service import EmbeddingService
 
 def run_experiment():
     print("=" * 60)
-    print("Cache Threshold Experiment (Tasks 66-67)")
+    print("Cache Threshold Experiment")
     print("=" * 60)
 
     embed_service = EmbeddingService()
 
-    # Define test queries: (original, paraphrase, unrelated)
+    # Test pairs: (original, paraphrase that should hit)
     test_pairs = [
         ("What is the best graphics card?", "Which GPU should I buy for gaming?"),
         ("How does encryption work?", "Explain cryptographic algorithms"),
@@ -43,7 +41,7 @@ def run_experiment():
         "History of ancient Rome",
     ]
 
-    # Pre-compute embeddings
+    # Pre-compute all embeddings
     print("\nEncoding test queries...")
     originals = [p[0] for p in test_pairs]
     paraphrases = [p[1] for p in test_pairs]
@@ -51,13 +49,13 @@ def run_experiment():
     paraphrase_embs = [embed_service.encode_single(q) for q in paraphrases]
     unrelated_embs = [embed_service.encode_single(q) for q in unrelated_queries]
 
-    # Show pairwise similarities
+    # Show pairwise similarities between originals and paraphrases
     print("\nPairwise similarities (original vs paraphrase):")
     for i, (orig, para) in enumerate(test_pairs):
         sim = float(np.dot(original_embs[i], paraphrase_embs[i]))
         print(f"  {sim:.4f}: '{orig}' <-> '{para}'")
 
-    # Test different thresholds
+    # Test each threshold value
     thresholds = [0.70, 0.75, 0.80, 0.85, 0.90, 0.95]
 
     print(f"\n{'='*60}")
@@ -71,7 +69,7 @@ def run_experiment():
         for i, (query, emb) in enumerate(zip(originals, original_embs)):
             cache.set(query, {"result": f"result_{i}"}, query_embedding=emb)
 
-        # Test paraphrases (should hit — true positives)
+        # Test paraphrases (should hit)
         for emb in paraphrase_embs:
             cache.get("paraphrase", query_embedding=emb)
 
@@ -86,9 +84,9 @@ def run_experiment():
         print(f"{threshold:>10.2f} | {cache.hit_count:>4} | {cache.miss_count:>6} | "
               f"{cache.hit_rate:>8.2%} | {false_positives:>9}")
 
-    # Task 67: Document findings
+    # Analysis
     print(f"\n{'='*60}")
-    print("FINDINGS (Task 67)")
+    print("FINDINGS")
     print("=" * 60)
     print("""
     LOW threshold (0.70):
